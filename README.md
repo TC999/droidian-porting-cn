@@ -7,10 +7,9 @@ Droidian 的目标是能够在 Android 手机上运行 Mobian。
 
 这是通过使用 [libhybris](https://github.com/libhybris/libhybris) 和 [halium](https://halium.org)等知名技术实现的。
 
-If your device is launched with Android 9 or above it is possible to port Droidian to it.
-If it already has a halium-compliant kernel of halium-9.0 and above chances are that Droidian will work without much modification.
+如果您的设备是使用 Android 9 或更高版本启动的，则可以将 Droidian 移植到它上面。如果它已经具有 halium-9.0 及更高版本的兼容 halium 的内核，则 Droidian 无需太多修改即可工作。
 
-The "System image creation" guide should only be used for legacy devices (devices released without a vendor partition) which have an Android 9 port (device tree, vendor tree and kernel source).
+“系统映像创建”指南仅适用于具有 Android 9 端口（设备树、供应商树和内核源代码）的旧设备（发布时没有供应商分区的设备）。
 
 Legacy devices without an Android 9 port cannot be ported to Droidian. So it's either Android 9 or bust!
 
