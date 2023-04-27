@@ -11,9 +11,9 @@ Droidian 的目标是能够在 Android 手机上运行 Mobian。
 
 “系统映像创建”指南仅适用于具有 Android 9 端口（设备树、供应商树和内核源代码）的旧设备（发布时没有供应商分区的设备）。
 
-Legacy devices without an Android 9 port cannot be ported to Droidian. So it's either Android 9 or bust!
+没有 Android 9 端口的旧设备无法移植到 Droidian。所以它要么是 Android 9，要么就失败了！
 
-Any device released with Android 8.1 or later can use the generic system image provided in Droidian and skip this section.
+任何搭载 Android 8.1 或更高版本的设备都可以使用 Droidian 中提供的通用系统映像并跳过此部分。
 
 Contents
 --------
