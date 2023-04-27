@@ -1,11 +1,11 @@
-Droidian porting guide
+Droidian 移植指南
 ======================
 
-Droidian is a GNU/Linux distribution based on top of [Mobian](https://mobian-project.org), a Debian-based distribution for mobile devices.
+Droidian 是基于 [Mobian](https://mobian-project.org), 之上的 GNU/Linux 发行版，Mobian 是基于 Debian 的移动设备发行版。
 
-The goal of Droidian is to be able to run Mobian on Android phones.
+Droidian 的目标是能够在 Android 手机上运行 Mobian。
 
-This is accomplished by using well-known technologies such as [libhybris](https://github.com/libhybris/libhybris) and [halium](https://halium.org).
+这是通过使用 [libhybris](https://github.com/libhybris/libhybris) 和 [halium](https://halium.org)等知名技术实现的。
 
 If your device is launched with Android 9 or above it is possible to port Droidian to it.
 If it already has a halium-compliant kernel of halium-9.0 and above chances are that Droidian will work without much modification.
