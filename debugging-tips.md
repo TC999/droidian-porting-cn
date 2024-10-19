@@ -1,154 +1,150 @@
-Debugging tips
+调试技巧
 ==============
 
-A set of tips and fixes that might help you debug the issues of your port of Droidian.
+一套可能有助于您调试Droidian移植问题的建议和修复方法。
 
-Table of contents
+目录
 -----------------
 
-* [Summary](#summary)
-* [Pre boot tips](#pre-boot-tips)
-* [Tips for when the systen is booted with shell](#tips-for-when-the-systen-is-booted-with-shell)
-* [Tips for when the system is up with Phosh](#tips-for-when-the-system-is-up-with-phosh)
+* [摘要](#摘要)
+* [启动前提示](#启动前提示)
+* [当系统带有shell启动时的提示](#当系统带有shell启动时的提示)
+* [当系统带有Phosh启动时的提示](#当系统带有Phosh启动时的提示)
 
-Summary
+摘要
 -------
 
-When porting a new device, you might (will) encounter some issues.
-It's unlikely that everything will work fine at first boot, so strap in,
-read this document twice and enjoy your ride.
+在移植新设备时，您可能会（确实会）遇到一些问题。
+不太可能在首次启动时一切正常，因此请做好准备，
+仔细阅读这份文档两次，享受您的旅程。
 
-Tips marked with **(generic rootfs only)** are useful/applicable only on
-Droidian installations installed via the generic rootfs .zip flashed via recovery (note
-that this document assumes TWRP as the recovery used).
+标有**（仅限通用rootfs）**的提示仅在通过恢复模式（注意本文档假设使用的是TWRP恢复）刷入通用rootfs.zip安装的Droidian安装中有用/适用。
 
-Pre boot tips
+启动前提示
 -------------
 
-These things are worth checking first:
+首先值得检查这些事情：
 
-### (generic rootfs only) Check size of the Droidian rootfs
+### （仅限通用rootfs）检查Droidian rootfs的大小
 
-Some recoveries might fail in resizing the Droidian rootfs. This will in turn
-break the boot process (and eventual feature bundles installation) due to the
-lack of available free space.
+一些恢复模式可能在调整Droidian rootfs大小时失败。这将反过来
+由于缺乏可用的空闲空间，破坏启动过程（以及最终的功能包安装）。
 
-You can open a shell from your recovery (either via `adb shell` or with the built-in terminal) and check:
+您可以从恢复模式打开shell（要么通过`adb shell`要么使用内置终端）并检查：
 
-	(recovery)$ ls -lth /data/rootfs.img
+	（恢复）$ ls -lth /data/rootfs.img
 
-if the image size is not 8GB, you can attempt resizing it manually:
+如果镜像大小不是8GB，您可以尝试手动调整大小：
 
-	(recovery)$ e2fsck -fy /data/rootfs.img
-	(recovery)$ resize2fs -f /data/rootfs.img 8G
+	（恢复）$ e2fsck -fy /data/rootfs.img
+	（恢复）$ resize2fs -f /data/rootfs.img 8G
 
-### (generic rootfs only) Install devtools
+### （仅限通用rootfs）安装devtools
 
-Stable Droidian releases require the installation of the devtools feature bundle
-to get useful tools to aid debugging, including an SSH server and tools required
-to expose it via RNDIS.
+稳定的Droidian版本需要安装devtools功能包
+以获得有助于调试的实用工具，包括SSH服务器和工具要求
+通过RNDIS暴露它。
 
-Devtools will also force the systemd journal to be flushed to disk, so that eventual
-logs might be looked for in recovery.
+Devtools还将强制systemd日志刷新到磁盘，以便最终
+可以在恢复中查找日志。
 
-### (generic rootfs only) Try a nightly release
+### （仅限通用rootfs）尝试使用夜间发布版
 
-Nightly releases embed devtools on the rootfs. If you have trouble installing devtools
-on a stable release, consider trying a nightly image so that you don't need to install
-it separatedly.
+夜间发布版在rootfs中嵌入了devtools。如果您在稳定版本上安装devtools有困难，考虑尝试使用夜间镜像，这样您就不需要单独安装它。
 
-### Double-check cmdline for the `systempart=` option
+### 再次检查cmdline的`systempart=`选项
 
-If you're re-using the same boot image from Ubuntu Touch, you might have the
-`systempart=` option in the kernel cmdline. This might lead to Android/Ubuntu Touch booting rather than Droidian
+如果您重复使用Ubuntu Touch的相同启动镜像，您可能在内核cmdline中有
+`systempart=`选项。这可能导致Android/Ubuntu Touch启动而不是Droidian
 
-Unlike Ubuntu Touch, Droidian doesn't use the existing system partition for the
-rootfs. Thus, if you have the `systempart=` kernel option, remove it and recompile
-your kernel (or otherwise remove it from the bootimage using tools like yabit or
-Android Image Kitchen).
+与Ubuntu Touch不同，Droidian不使用现有的系统分区作为
+rootfs。因此，如果您有`systempart=`内核选项，请删除它并重新编译
+您的内核（或者使用yabit或
+Android Image Kitchen等工具从启动镜像中删除它）。
 
-If your device reboots immediately, you should try the these few systemd sections
+如果您的设备立即重新启动，您应该尝试这些几个systemd部分
 
-### initramfs not finding the userdata partition
-If device gets stuck in initramfs (you'll see Failed to boot in dmesg of your host), one possibility is that initramfs cannot find the userdata partition.
+### initramfs找不到userdata分区
+如果设备停留在initramfs（您将在主机的dmesg中看到启动失败），一种可能性是initramfs无法找到userdata分区。
 
-To fix this `datapart=` can be added to the cmdline. 
+为了解决这个问题，可以在cmdline中添加`datapart=`。
 
-The value of datapart should be either `/dev/disk/by-partlabel/userdata` or the exact label and number of that partition such as `/dev/sda23` (which is device specific).
+datapart的值应该是`/dev/disk/by-partlabel/userdata`或确切的标签和编号，例如`/dev/sda23`（这取决于设备）。
 
-### (generic rootfs only) Mask journald
+### （仅限通用rootfs）屏蔽journald
 
-Some devices have trouble with systemd-journald. You might try masking it via recovery.
+一些设备对systemd-journald有麻烦。您可以尝试通过恢复模式屏蔽它。
 
-Note that masking journald will disable log collection, so other issues will be harder to debug.
+请注意，屏蔽journald将禁用日志收集，因此其他问题将更难调试。
 
-	(recovery)$ mkdir /tmp/mpoint
-	(recovery)$ mount /data/rootfs.img /tmp/mpoint
-	(recovery)$ chroot /tmp/mpoint /bin/bash
-	(recovery)$ export PATH=/usr/bin:/usr/sbin
-	(recovery)$ systemctl mask systemd-journald
+	（恢复）$ mkdir /tmp/mpoint
+	（恢复）$ mount /data/rootfs.img /tmp/mpoint
+	（恢复）$ chroot /tmp/mpoint /bin/bash
+	（恢复）$ export PATH=/usr/bin:/usr/sbin
+	（恢复）$ systemctl mask systemd-journald
 
-### (generic rootfs only) Check systemd journal for clues
+### （仅限通用rootfs）检查systemd日志以寻找线索
 
-If you haven't masked journald, and have devtools (or a nightly image) installed, you can check the systemd journal:
+如果您没有屏蔽journald，并且已安装devtools（或安装了夜间镜像），您可以检查systemd日志：
 
-	(recovery)$ mkdir /tmp/mpoint
-	(recovery)$ mount /data/rootfs.img /tmp/mpoint
-	(recovery)$ chroot /tmp/mpoint /bin/bash
-	(recovery)$ export PATH=/usr/bin:/usr/sbin
-	(recovery)$ journalctl --no-pager
+	（恢复）$ mkdir /tmp/mpoint
+	（恢复）$ mount /data/rootfs.img /tmp/mpoint
+	（恢复）$ chroot /tmp/mpoint /bin/bash
+	（恢复）$ export PATH=/usr/bin:/usr/sbin
+	（恢复）$ journalctl --no-pager
 
-If you are stuck at the glowing Droidian logo and RNDIS is not working, you should into your kernel config to make sure `CONFIG_USB_CONFIGFS_RNDIS` is enabled.
+如果您停留在Droidian徽标上，并且RNDIS无法工作，您应该进入您的内核配置以确保`CONFIG_USB_CONFIGFS_RNDIS`已启用。
 
-It should also be noted that you should check the pstore section of the [kernel compilation](./kernel-compilation.md) guide.
+还应该注意，您应该检查[内核编译](./kernel-compilation.md)指南中的pstore部分。
 
-If you have devtools installed (or have flashed a nightly image) but still don't have working RNDIS, these tips might help you:
+如果您已安装devtools（或已刷入夜间镜像），但RNDIS仍然无法工作，这些提示可能会帮助您：
 
-### (generic rootfs only) Mask resolved and timesyncd
+### （仅限通用rootfs）屏蔽resolved和timesyncd
 
-Some kernels (exynos kernels are known to have this issue) have trouble with the kernel namespaces systemd creates to run some
-daemons, like timesyncd and resolved. This might make the boot process hang.
+一些内核（已知exynos内核有此问题）对systemd为一些
+守护进程创建的内核命名空间有麻烦，如timesyncd和resolved。这可能会使
+启动过程挂起。
 
-You might try masking those two services via a recovery shell:
+您可以尝试通过恢复模式shell屏蔽这两个服务：
 
-	(recovery)$ mkdir /tmp/mpoint
-	(recovery)$ mount /data/rootfs.img /tmp/mpoint
-	(recovery)$ chroot /tmp/mpoint /bin/bash
-	(recovery)$ export PATH=/usr/bin:/usr/sbin
-	(recovery)$ systemctl mask systemd-resolved
-	(recovery)$ systemctl mask systemd-timesyncd
+	（恢复）$ mkdir /tmp/mpoint
+	（恢复）$ mount /data/rootfs.img /tmp/mpoint
+	（恢复）$ chroot /tmp/mpoint /bin/bash
+	（恢复）$ export PATH=/usr/bin:/usr/sbin
+	（恢复）$ systemctl mask systemd-resolved
+	（恢复）$ systemctl mask systemd-timesyncd
 
-**If this worked, re-check your kernel configuration. See the section above.**
+**如果这有效，请重新检查您的内核配置。参见上面的部分。**
 
-### (generic rootfs only) Disable the Halium container
+### （仅限通用rootfs）禁用Halium容器
 
-Some vendor scripts might conflict with the usb-tethering script used to set-up the RNDIS connection.
+一些供应商脚本可能与用于设置RNDIS连接的usb-tethering脚本冲突。
 
-You can disable the Halium container startup with the following:
+您可以使用以下方法禁用Halium容器启动：
 
-	(recovery)$ mkdir /tmp/mpoint
-	(recovery)$ mount /data/rootfs.img /tmp/mpoint
-	(recovery)$ chroot /tmp/mpoint /bin/bash
-	(recovery)$ export PATH=/usr/bin:/usr/sbin
-	(recovery)$ nano /etc/systemd/system/lxc@android.service
+	（恢复）$ mkdir /tmp/mpoint
+	（恢复）$ mount /data/rootfs.img /tmp/mpoint
+	（恢复）$ chroot /tmp/mpoint /bin/bash
+	（恢复）$ export PATH=/usr/bin:/usr/sbin
+	（恢复）$ nano /etc/systemd/system/lxc@android.service
 
-Comment the ExecStartPre and ExecStart lines, add
+注释掉ExecStartPre和ExecStart行，添加
 
 `ExecStart=/bin/true`
 
-save, sync and reboot
+保存，同步并重新启动
 
-### (generic rootfs only) Setup connection via WLAN
+### （仅限通用rootfs）通过WLAN设置连接
 
-You might try pre-configuring your WLAN device and attempt getting in via WLAN rather than RNDIS:
+您可以尝试预配置您的WLAN设备，并尝试通过WLAN而不是RNDIS进入：
 
-	(recovery)$ mkdir /tmp/mpoint
-	(recovery)$ mount /data/rootfs.img /tmp/mpoint
-	(recovery)$ chroot /tmp/mpoint /bin/bash
-	(recovery)$ export PATH=/usr/bin:/usr/sbin
-	(recovery)$ nano /etc/network/interfaces
+	（恢复）$ mkdir /tmp/mpoint
+	（恢复）$ mount /data/rootfs.img /tmp/mpoint
+	（恢复）$ chroot /tmp/mpoint /bin/bash
+	（恢复）$ export PATH=/usr/bin:/usr/sbin
+	（恢复）$ nano /etc/network/interfaces
 
-and put the following there:
+并在其中放置以下内容：
 
 ```
 auto wlan0
@@ -157,9 +153,9 @@ iface wlan0 inet dhcp
   wpa-psk PASSWORD
 ```
 
-where SSID is your AP SSID, and PASSWORD is your password.
+其中SSID是您的AP SSID，PASSWORD是您的密码。
 
-You can also use a static configuration if you prefer:
+您也可以根据需要使用静态配置：
 
 ```
 auto wlan0
@@ -171,119 +167,119 @@ iface wlan0 inet static
   gateway <gw>
 ```
 
-Reboot, and if everything went smoothly you can try getting in with `ssh droidian@$IP`.
+重新启动，如果一切顺利，您可以尝试使用`ssh droidian@$IP`进入。
 
-If you configured using DHCP, you should check among your DHCP server leases.
+如果您使用DHCP配置，您应该检查您的DHCP服务器租赁。
 
-The default password is `1234`.
+默认密码是`1234`。
 
-### ssh saying system is still booting
+### ssh说系统仍在启动
 
-To make ssh ignore systemd complaining, [this service file](https://github.com/droidian-mt6765/adaptation-droidian-garden/blob/main/debian/adaptation-garden-configs.ssh-fix.service) can added in recovery
+为了使ssh忽略systemd抱怨，可以在恢复中添加[这个服务文件](https://github.com/droidian-mt6765/adaptation-droidian-garden/blob/main/debian/adaptation-garden-configs.ssh-fix.service) 
 
-	(recovery)$ mkdir /tmp/mpoint
-	(recovery)$ mount /data/rootfs.img /tmp/mpoint
-	(recovery)$ chroot /tmp/mpoint /bin/bash
-	(recovery)$ export PATH=/usr/bin:/usr/sbin
-	(recovery)$ nano /etc/systemd/system
+	（恢复）$ mkdir /tmp/mpoint
+	（恢复）$ mount /data/rootfs.img /tmp/mpoint
+	（恢复）$ chroot /tmp/mpoint /bin/bash
+	（恢复）$ export PATH=/usr/bin:/usr/sbin
+	（恢复）$ nano /etc/systemd/system
 
-Put the content of the service file
+放入服务文件的内容
 
-	(recovery)$ systemctl enable ssh-fix
+	（恢复）$ systemctl enable ssh-fix
 
-Tips for when the systen is booted with shell
+当系统带有shell启动时的提示
 ---------------------------------------------
 
-**Before proceeding, read the previous section, those tips might be useful as well.**
+**在继续之前，请阅读前一节，这些提示可能也有用。**
 
-**NOTE THAT EVERY COMMAND IN THIS SECTION IMPLIES ROOT PRIVILEGES UNLESS EXPLICITLY SPECIFIED**
+**请注意，除非特别指明，否则本节中的每个命令都意味着需要root权限**
 
-You can start a root shell with
+您可以使用以下命令启动root shell
 
-	(device)$ sudo -i
+	（设备）$ sudo -i
 
-### USB Networking
+### USB网络
 
-To share your hosts network connection with your device you can use the following on your host
+要与设备共享主机的网络连接，您可以在主机上使用以下命令
 
-	(host)$ sudo sysctl net.ipv4.ip_forward=1
-	(host)$ sudo iptables -t nat -A POSTROUTING -o $INTERNET -j MASQUERADE
-	(host)$ sudo iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-	(host)$ sudo iptables -A FORWARD -i $USB -o $INTERNET -j ACCEPT
+	（主机）$ sudo sysctl net.ipv4.ip_forward=1
+	（主机）$ sudo iptables -t nat -A POSTROUTING -o $INTERNET -j MASQUERADE
+	（主机）$ sudo iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+	（主机）$ sudo iptables -A FORWARD -i $USB -o $INTERNET -j ACCEPT
 
-$USB is the interface connected to your device, most likely `usb0`
+$USB是连接到您的设备的接口，很可能是`usb0`
 
-$INTERNET is the interface connected to the internet.
+$INTERNET是连接到互联网的接口。
 
-Then run the following on your device
+然后在您的设备上运行以下命令
 
-	(device)$ sudo ip route add default via 10.15.19.100
+	（设备）$ sudo ip route add default via 10.15.19.100
 
-The ip address `10.15.19.100` is your host. Double check it before running the command.
+IP地址`10.15.19.100`是您的主机。运行命令前请仔细检查。
 
-Now to access the internet replace the content of `/etc/resolv.conf` with `nameserver 8.8.8.8`.
+现在要访问互联网，将`/etc/resolv.conf`的内容替换为`nameserver 8.8.8.8`。
 
 ### Umount schedtune
 
-Schedtune must be disabled for Droidian to work, but some device kernels complain
-about that. So the workaround is to umount schedtune at boot:
+Schedtune必须被禁用才能使Droidian工作，但一些设备内核对此有抱怨。
+因此，解决方案是在启动时umount schedtune：
 
-	(device)# mkdir -p /etc/systemd/system/android-mount.service.d
-	(device)# nano /etc/systemd/system/android-mount.service.d/10-schedtune.conf
+	（设备）# mkdir -p /etc/systemd/system/android-mount.service.d
+	（设备）# nano /etc/systemd/system/android-mount.service.d/10-schedtune.conf
 
-add this there:
+在那里添加这个：
 
 ```
 [Service]
 ExecStartPre=-/usr/bin/umount -l /sys/fs/cgroup/schedtune
 ```
 
-save and reboot
+保存并重新启动
 
-### Ensure the Halium container is running
+### 确保Halium容器正在运行
 
-You can use
+您可以使用
 
-	(device)# lxc-ls --fancy
+	（设备）# lxc-ls --fancy
 
-to check if the Halium container is running
+来检查Halium容器是否正在运行
 
-### Launch the Halium container manually
+### 手动启动Halium容器
 
-If the Halium container is not running, you might try launching it manually:
+如果Halium容器没有运行，您可以尝试手动启动它：
 
-	(device)# lxc-start -n android --logfile=/tmp/lxclog --logpriority=DEBUG
+	（设备）# lxc-start -n android --logfile=/tmp/lxclog --logpriority=DEBUG
 
-then check `/tmp/lxclog`.
+然后检查`/tmp/lxclog`。
 
-### Re-generate udev rules
+### 重新生成udev规则
 
-If the container is running, but you still haven't booted up to UI, you might try
-regenerating the udev rules (snippet from the [UBports halium-9 porting notes](https://github.com/ubports/porting-notes/wiki/Halium-9#generating-udev-rules))
+如果容器正在运行，但您仍然没有启动到UI，您可以尝试
+重新生成udev规则（摘自[UBports halium-9移植说明](https://github.com/ubports/porting-notes/wiki/Halium-9#generating-udev-rules)) 
 
-	(device)# DEVICE=codename # replace with your device codename
-	(device)# cat /var/lib/lxc/android/rootfs/ueventd*.rc /vendor/ueventd*.rc | grep ^/dev | sed -e 's/^\/dev\///' | awk '{printf "ACTION==\"add\", KERNEL==\"%s\", OWNER=\"%s\", GROUP=\"%s\", MODE=\"%s\"\n",$1,$3,$4,$2}' | sed -e 's/\r//' >/etc/udev/rules.d/70-$DEVICE.rules
+	（设备）# DEVICE=codename # 替换为您的设备代号
+	（设备）# cat /var/lib/lxc/android/rootfs/ueventd*.rc /vendor/ueventd*.rc | grep ^/dev | sed -e 's/^\/dev\///' | awk '{printf "ACTION==\"add\", KERNEL==\"%s\", OWNER=\"%s\", GROUP=\"%s\", MODE=\"%s\"\n",$1,$3,$4,$2}' | sed -e 's/\r//' >/etc/udev/rules.d/70-$DEVICE.rules
 
-Then reboot.
+然后重新启动。
 
-### Check if test_hwcomposer works
+### 检查if test_hwcomposer工作
 
-Trying the `test_hwcomposer` command might be an useful test to check if the Android composer works.
+尝试`test_hwcomposer`命令可能是一个有用的测试，以检查Android composer是否工作。
 
-Note that on Halium 10/11 devices you might need to restart the Android composer service after
-using a client like test_hwcomposer or phoc itself. You can kill the `android.service.composer` process, it will be
-respawned by the android init automatically.
+请注意，在Halium 10/11设备上，使用客户端如test_hwcomposer或phoc本身后
+可能需要重新启动Android composer服务。您可以终止`android.service.composer`进程，它将由
+android init自动重新生成。
 
-### Make the Phosh service wait some seconds before start-up
+### 使Phosh服务在启动前等待几秒钟
 
-Sometimes Phosh might attempt its startup even when the Android composer service is not ready (even if it signals so itself).
+有时Phosh可能会尝试启动，即使Android composer服务尚未准备好（即使它自己发出信号）。
 
-This is a bug, and you can workaround that by making the phosh service (which starts the compositor) wait some seconds:
+这是一个错误，您可以通过使phosh服务（启动合成器的服务）等待几秒钟来解决这个问题：
 
-	(device)# mkdir -p /etc/systemd/system/phosh.service.d/
-	(device)# nano /etc/systemd/system/phosh.service.d/90-wait.conf
+	（设备）# mkdir -p /etc/systemd/system/phosh.service.d/
+	（设备）# nano /etc/systemd/system/phosh.service.d/90-wait.conf
 
-and put this there:
+并在那里放置这个：
 
 ```
 # FIXME
@@ -291,184 +287,182 @@ and put this there:
 ExecStartPre=/usr/bin/sleep 5
 ```
 
-Save and reboot.
+保存并重新启动。
 
-### Vendor is not mounted
+### 供应商未挂载
 
-It is possible that the vendor partition doesn't get mounted by init and as a result the Halium contianer cannot start much of the services.
+可能供应商分区没有被init挂载，因此Halium容器无法启动许多服务。
 
-First off check if the vendor image is mounted
+首先检查供应商映像是否已挂载
 
-	(device)# ls /vendor
+	（设备）# ls /vendor
 
-If it's empty then it is not mounted by init. Try mounting it manually by finding the partition in `/dev/disk/by-partlabel` and `/dev/block/bootdevice/by-name`.
+如果为空，则它没有被init挂载。尝试手动挂载它，通过在`/dev/disk/by-partlabel`和`/dev/block/bootdevice/by-name`中找到分区。
 
-If it is not there then you'll need to search `/dev` for your vendor partition.
+如果它不在那里，那么您需要在`/dev`中搜索您的供应商分区。
 
-Then to test it out, in `/var/lib/lxc/android/pre-start.sh` add the following under the `# Halium 9` section
+然后进行测试，在`/var/lib/lxc/android/pre-start.sh`下`# Halium 9`部分添加以下内容
 
-```
+````
 mkdir -p /var/lib/lxc/android/rootfs/vendor
 mount /dev/mmcblk0pYOURVENDOR /vendor
 mount --bind /vendor /var/lib/lxc/android/rootfs/vendor
-```
+````
 
-And reboot
+并重新启动
 
-Make sure to come back to this issue later to find a proper solution.
+请务必稍后回来寻找适当的解决方案。
 
-### lxc@android and phosh started but no output
+### lxc@android和phosh已启动但没有输出
 
-If phosh and lxc@android have started with udev rules in plcae but there is no output on the screen, it is possible that vndservicemanager is crashing.
+如果phosh和lxc@android已在udev规则下启动，但屏幕上没有输出，可能是vndservicemanager崩溃了。
 
-On Halium 11 and some Halium 10 devices, a patched version of vndservicemanager has to be used. a patched version of vndservicemanager can be found [here](https://github.com/droidian-starqlte/adaptation-droidian-starqlte/blob/bookworm/usr/lib/droid-vendor-overlay/bin/vndservicemanager).
+在Halium 11和一些Halium 10设备上，必须使用修补过的vndservicemanager版本。修补过的vndservicemanager版本可以在这里找到[here](https://github.com/droidian-starqlte/adaptation-droidian-starqlte/blob/bookworm/usr/lib/droid-vendor-overlay/bin/vndservicemanager)。
 
-	(device)# mkdir -p /usr/lib/droid-vendor-overlay/bin/
-	(device)# cp vndservicemanager /usr/lib/droid-vendor-overlay/bin/
+	（设备）# mkdir -p /usr/lib/droid-vendor-overlay/bin/
+	（设备）# cp vndservicemanager /usr/lib/droid-vendor-overlay/bin/
 
-Reboot
+重新启动
 
-### Long boot times
+### 启动时间过长
 
-If you are encountering long boot times, you can try inspecting kernel logs and check what process was keeping the system from booting up
+如果您遇到启动时间过长，您可以尝试检查内核日志并查看哪个进程在阻止系统启动
 
-	(device)# dmesg
+	（设备）# dmesg
 
-To figure out which part of the boot process is causing the issue
+要弄清楚启动过程中哪一部分导致了问题
 
-	(device)# systemd-analyze
+	（设备）# systemd-analyze
 
-Tips for when the system is up with Phosh
+当系统带有Phosh启动时的提示
 -----------------------------------------
 
-### Screen brightness
+### 屏幕亮度
 
-On some Qualcomm devices, screen brightness is always set to 0 on boot. to work around this issue brightness can be set to maximum on each boot
+在一些高通设备上，屏幕亮度在启动时总是设置为0。为了解决这个问题，亮度可以在每次启动时设置为最大
 
-	(device)$ echo 2047 > /sys/class/leds/lcd-backlight/brightness
+	（设备）$ echo 2047 > /sys/class/leds/lcd-backlight/brightness
 
-It can also be set as a service to start at boot like [this service file](https://github.com/droidian-lavender/adaptation-droidian-lavender/blob/main/debian/adaptation-lavender-configs.brightness.service).
+也可以将其设置为服务以在启动时启动，如[这个服务文件](https://github.com/droidian-lavender/adaptation-droidian-lavender/blob/main/debian/adaptation-lavender-configs.brightness.service)。
 
-On MediaTek devices, power button will stop working after being used once.
+在联发科设备上，电源按钮在使用一次后将停止工作。
 
-[This hack](https://github.com/droidian-mt6765/garden_power_button_helper) or a hack close to it can be used for now.
+[This hack](https://github.com/droidian-mt6765/garden_power_button_helper) 或类似hack现在可以使用。
 
-It should be compiled on the device itself or it can be cross compiled from a computer.
+它应该在设备本身上编译，或者可以从计算机上交叉编译。
 
-### Brightness adjusting from drop down menu
+### 从下拉菜单调整亮度
 
-On some devices, vendor sets the wrong permission for the brightness sysfs node at boot so Phosh cannot access and modify it.
+在某些设备上，供应商在启动时为亮度sysfs节点设置了错误的权限，因此Phosh无法访问和修改它。
 
-A service like [this](https://github.com/droidian-onclite/adaptation-droidian-onclite/blob/main/debian/adaptation-onclite-configs.brightnessperm.service) can be used to set the correct permission or at least give the user droidian access to the sysfs node
+可以使用[这个](https://github.com/droidian-onclite/adaptation-droidian-onclite/blob/main/debian/adaptation-onclite-configs.brightnessperm.service)服务来设置正确的权限或至少给用户droidian访问sysfs节点的权限
 
-Make sure to replace the brightness node according to your needs.
+确保根据您的需要替换亮度节点。
 
-### Phosh scaling
+### Phosh缩放
 
-Phosh might have the wrong scaling set. phoc.ini should be created to adjust it
+Phosh的缩放可能设置错误。应该创建phoc.ini来调整它
 
-	(device)# mkdir -p /etc/phosh/
-	(device)# nano phoc.ini
+	（设备）# mkdir -p /etc/phosh/
+	（设备）# nano phoc.ini
 
-and put [phoc.ini](https://github.com/droidian-lavender/adaptation-droidian-lavender/blob/main/etc/phosh/phoc.ini)
+并放置[phoc.ini](https://github.com/droidian-lavender/adaptation-droidian-lavender/blob/main/etc/phosh/phoc.ini)
 
-the value for `output:HWCOMPOSER-1` should be adjusted.
+`output:HWCOMPOSER-1`的值应该调整。
 
-### vendor parititon overlay
+### 供应商分区覆盖
 
-To overlay a file over the vendor partition, `droid-vendor-overlay` directory can be used
+要覆盖供应商分区上的文件，可以使用`droid-vendor-overlay`目录
 
-	(device)# mkdir -p /usr/lib/droid-vendor-overlay
+	（设备）# mkdir -p /usr/lib/droid-vendor-overlay
 
-and the your files can be added here. take [this](https://github.com/droidian-devices/adaptation-fxtec-pro1x/tree/bookworm/sparse/usr/lib/droid-vendor-overlay) as a reference.
+您可以在这里添加您的文件。参考[这个](https://github.com/droidian-devices/adaptation-fxtec-pro1x/tree/bookworm/sparse/usr/lib/droid-vendor-overlay)。
 
-It should be noted that the directory structure matters.
+需要注意的是目录结构很重要。
 
-### system partition overlay
+### 系统分区覆盖
 
-To overlay a file over the system partition, `droid-system-overlay` directory can be used
+要覆盖系统分区上的文件，可以使用`droid-system-overlay`目录
 
-	(device)# mkdir -p /usr/lib/droid-system-overlay
+	（设备）# mkdir -p /usr/lib/droid-system-overlay
 
-and the your files can be added here. take [this](https://github.com/droidian-devices/adaptation-fxtec-pro1x/tree/bookworm/sparse/usr/lib/droid-system-overlay) as a reference.
+您可以在这里添加您的文件。参考[这个](https://github.com/droidian-devices/adaptation-fxtec-pro1x/tree/bookworm/sparse/usr/lib/droid-system-overlay)。
 
-It should be noted that the directory structure matters.
+需要注意的是目录结构很重要。
 
-### Bluetooth crashing
+### 蓝牙崩溃
 
-Bluetooth might crash because of missing MAC Address. To make the bluetooth service ignore it this hack can be used
+蓝牙可能因缺少MAC地址而崩溃。为了使蓝牙服务忽略它，可以使用此hack
 
-	(device)# mkdir -p /var/lib/bluetooth/
-	(device)# touch /var/lib/bluetooth/board-address
+	（设备）# mkdir -p /var/lib/bluetooth/
+	（设备）# touch /var/lib/bluetooth/board-address
 
-For a proper solution, a `droid-get-bt-address.sh` script which fetches the correct address should be created.
+对于适当的解决方案，应该创建一个`droid-get-bt-address.sh`脚本以获取正确的地址。
 
-An example of this solution can be found at [here](https://github.com/droidian-sargo/adaptation-droidian-sargo/blob/bookworm/usr/bin/droid/droid-get-bt-address.sh) for Qualcomm's
-and [here](https://github.com/droidian-mt6765/adaptation-droidian-garden/blob/main/usr/bin/droid/droid-get-bt-address.sh) for MediaTek's.
+可以在[here](https://github.com/droidian-sargo/adaptation-droidian-sargo/blob/bookworm/usr/bin/droid/droid-get-bt-address.sh)找到高通的解决方案示例
+和[here](https://github.com/droidian-mt6765/adaptation-droidian-garden/blob/main/usr/bin/droid/droid-get-bt-address.sh)找到联发科的解决方案示例。
 
-### Bluetooth not available in settings
+### 蓝牙在设置中不可用
 
-Bluetooth might fail to appear in `gnome-control-center` for various reasons.
+蓝牙可能因各种原因未能出现在`gnome-control-center`中。
 
-It can be tested with `bluetoothctl` or `blueman`
+可以使用`bluetoothctl`或`blueman`进行测试
 
-	(device)$ bluetoothctl
+	（设备）$ bluetoothctl
 	[bluetooth]# scan on
 
-or to install blueman
+或安装blueman
 
-	(device)# apt install blueman
+	（设备）# apt install blueman
 
-### Audio adjusting not working
+### 音频调整不起作用
 
-on MediaTek devices, pulseaudio requires a custom configuration file which can be found [here](https://github.com/droidian-mt6765/adaptation-droidian-garden/blob/main/etc/pulse/arm_droid_card_custom.pa).
+在联发科设备上，pulseaudio需要一个自定义配置文件，可以在[here](https://github.com/droidian-mt6765/adaptation-droidian-garden/blob/main/etc/pulse/arm_droid_card_custom.pa)找到。
 
-### Custom hostname
+### 自定义主机名
 
-To set a custom hostname on boot, a preferred hostname file can be created
+要在启动时设置自定义主机名，可以创建一个首选主机名文件
 
-	(device)# mkdir -p /usr/lib/droidian/device/
-	(device)# nano preferred-hostname
+	（设备）# mkdir -p /usr/lib/droidian/device/
+	（设备）# nano preferred-hostname
 
-And put your device model or codename without any spaces.
+并放入您的设备型号或代号，不要有空格。
 
-### Kernel modules
+### 内核模块
 
-`systemd-modules-load` doesn't load the modules on MediaTek. [This](https://github.com/droidian-mt6765/adaptation-droidian-garden/blob/main/debian/adaptation-garden-configs.modules.service) service or some similar implementation can be included to load all the correct modules and get Wi-Fi working.
+`systemd-modules-load`在联发科上不加载模块。[This](https://github.com/droidian-mt6765/adaptation-droidian-garden/blob/main/debian/adaptation-garden-configs.modules.service)服务或类似的实现可以被包含以加载所有正确的模块并使Wi-Fi工作。
 
-### Cursor on the screen
+### 屏幕上的光标
 
-Some devices have an some HID interfaces which are not used by Droidian. These interfaces might get registered as things such as keyboard or mouse.
+一些设备有一些HID接口，这些接口不被Droidian使用。这些接口可能被注册为键盘或鼠标等。
 
-As a result you might see a cursor on the screen for no obvious reason.
+因此，您可能会看到屏幕上莫名其妙地出现光标。
 
-To find information about the input device, `libinput-tools` can be installed and used
+要获取有关输入设备的信息，可以安装并使用`libinput-tools`
 
-	(device)# apt install libinput-tools
+	（设备）# apt install libinput-tools
 
-To get a list of all devices
+列出所有设备
 
-	(device)# libinput list-devices
+	（设备）# libinput list-devices
 
-To monitor inputs
+监控输入
 
-	(device)# libinput debug-events
+	（设备）# libinput debug-events
 
-To hide this event node a udev rule can be added
+要隐藏此事件节点，可以添加udev规则
 
 `ACTION=="add|change", KERNEL=="event1", OWNER="root", GROUP="system", MODE="0666", ENV{LIBINPUT_IGNORE_DEVICE}="1"`
 
-to `/etc/udev/rules.d/71-hide.rules`.
+到`/etc/udev/rules.d/71-hide.rules`。
 
-Make sure to adapt the event node in this line from `event1` to your input device and reboot.
+确保将此行中的事件节点从`event1`调整为您的输入设备并重新启动。
 
-### Encryption support
+### 加密支持
 
-To test out encryption first create an empty file in `/usr/lib/droidian/device/encryption-supported` then open the encryption app.
+要测试加密，首先在`/usr/lib/droidian/device/encryption-supported`中创建一个空文件，然后打开加密应用程序。
 
+	（设备）# mkdir -p /usr/lib/droidian/device/
+	（设备）# touch /usr/lib/droidian/device/encryption-supported
 
-	(device)# mkdir -p /usr/lib/droidian/device/
-	(device)# touch /usr/lib/droidian/device/encryption-supported
-
-
-If after enabling encryption device can be unlocked without any issues then keep the file. else remove it
+如果启用加密后设备可以无问题地解锁，则保留该文件。否则，将其删除。
